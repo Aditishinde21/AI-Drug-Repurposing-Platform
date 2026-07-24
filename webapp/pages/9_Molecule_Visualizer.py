@@ -1,6 +1,5 @@
 import streamlit as st
 from rdkit import Chem
-from rdkit.Chem import Draw
 from rdkit.Chem import Descriptors
 
 # -----------------------------
@@ -15,13 +14,13 @@ st.set_page_config(
 st.title("🧬 Molecule Structure Visualizer")
 
 st.write("""
-Visualize the molecular structure using a SMILES string.
+Visualize molecular properties using a SMILES string.
 
 If you searched a drug in **PubChem Search**, its SMILES will appear here automatically.
 """)
 
 # -------------------------------------------------
-# Get SMILES from PubChem Search (if available)
+# Get SMILES from PubChem Search
 # -------------------------------------------------
 
 default_smiles = st.session_state.get(
@@ -47,57 +46,34 @@ if st.button("Visualize Molecule"):
 
     else:
 
-        st.success("✅ Molecule Generated Successfully")
+        st.success("✅ Molecule Parsed Successfully")
 
-        img = Draw.MolToImage(mol, size=(500, 500))
-
-        st.image(
-            img,
-            caption="2D Molecular Structure"
-        )
-
-        st.divider()
-
-        st.subheader("📊 Molecular Properties")
+        st.subheader("🧪 Molecular Information")
 
         col1, col2 = st.columns(2)
 
         with col1:
-
-            st.metric(
-                "Molecular Weight",
-                f"{Descriptors.MolWt(mol):.2f}"
-            )
-
-            st.metric(
-                "LogP",
-                f"{Descriptors.MolLogP(mol):.2f}"
-            )
-
-            st.metric(
-                "TPSA",
-                f"{Descriptors.TPSA(mol):.2f}"
-            )
+            st.metric("Molecular Weight", f"{Descriptors.MolWt(mol):.2f}")
+            st.metric("LogP", f"{Descriptors.MolLogP(mol):.2f}")
+            st.metric("TPSA", f"{Descriptors.TPSA(mol):.2f}")
+            st.metric("H-Bond Donors", Descriptors.NumHDonors(mol))
 
         with col2:
+            st.metric("H-Bond Acceptors", Descriptors.NumHAcceptors(mol))
+            st.metric("Rotatable Bonds", Descriptors.NumRotatableBonds(mol))
+            st.metric("Ring Count", Descriptors.RingCount(mol))
+            st.metric("Heavy Atoms", Descriptors.HeavyAtomCount(mol))
 
-            st.metric(
-                "H-Bond Donors",
-                Descriptors.NumHDonors(mol)
-            )
+        st.divider()
 
-            st.metric(
-                "H-Bond Acceptors",
-                Descriptors.NumHAcceptors(mol)
-            )
+        st.subheader("🧬 Canonical SMILES")
 
-            st.metric(
-                "Rotatable Bonds",
-                Descriptors.NumRotatableBonds(mol)
-            )
+        st.code(Chem.MolToSmiles(mol), language="text")
 
         st.divider()
 
         st.info("""
-RDKit was used to generate the molecular structure and calculate the molecular descriptors.
+This deployment uses RDKit to calculate molecular descriptors.
+
+The 2D structure image has been disabled because the Streamlit Cloud RDKit build does not include the drawing backend (`rdMolDraw2D`).
 """)
