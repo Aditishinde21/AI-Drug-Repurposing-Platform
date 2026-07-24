@@ -8,3 +8,4 @@ Pillow==10.3.0
 reportlab==4.2.2
 rdkit-pypi==2022.9.5
 pubchempy==1.0.4
+requests>=2.32.0

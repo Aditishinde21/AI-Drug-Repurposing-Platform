@@ -1,151 +1,91 @@
 import streamlit as st
-import pubchempy as pcp
+import requests
 
-# --------------------------------------------------
-# Page Configuration
-# --------------------------------------------------
 st.set_page_config(
     page_title="PubChem Drug Search",
     page_icon="🌐",
     layout="wide"
 )
 
-# --------------------------------------------------
-# Title
-# --------------------------------------------------
 st.title("🌐 PubChem Drug Search")
 
 st.write("""
 Search any drug available in the **PubChem Database**.
 
-Examples:
+Examples
+
 - Aspirin
-- Paracetamol
 - Ibuprofen
-- Ciprofloxacin
+- Paracetamol
 - Metformin
+- Ciprofloxacin
 """)
 
-# --------------------------------------------------
-# Drug Input
-# --------------------------------------------------
-drug_name = st.text_input(
+drug = st.text_input(
     "Enter Drug Name",
     value="Aspirin"
 )
 
-# --------------------------------------------------
-# Search Button
-# --------------------------------------------------
 if st.button("🔍 Search Drug"):
 
     try:
 
-        compounds = pcp.get_compounds(drug_name, "name")
+        url = (
+            "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/"
+            f"{drug}/property/"
+            "CID,MolecularFormula,MolecularWeight,CanonicalSMILES,"
+            "XLogP,TPSA/JSON"
+        )
 
-        if not compounds:
-            st.error("❌ Drug not found.")
+        response = requests.get(url, timeout=20)
 
-        else:
+        if response.status_code != 200:
+            st.error("Drug not found.")
+            st.stop()
 
-            compound = compounds[0]
+        data = response.json()
 
-            # --------------------------------------------------
-            # Get SMILES safely
-            # --------------------------------------------------
-            smiles = None
+        prop = data["PropertyTable"]["Properties"][0]
 
-            try:
-                smiles = compound.canonical_smiles
-            except:
-                pass
+        cid = prop.get("CID")
+        formula = prop.get("MolecularFormula")
+        mw = prop.get("MolecularWeight")
+        smiles = prop.get("CanonicalSMILES")
+        xlogp = prop.get("XLogP")
+        tpsa = prop.get("TPSA")
 
-            if not smiles:
-                try:
-                    smiles = compound.isomeric_smiles
-                except:
-                    pass
+        st.session_state["drug_name"] = drug
+        st.session_state["cid"] = cid
+        st.session_state["formula"] = formula
+        st.session_state["mw"] = mw
+        st.session_state["smiles"] = smiles
+        st.session_state["xlogp"] = xlogp
+        st.session_state["tpsa"] = tpsa
 
-            # --------------------------------------------------
-            # Save into Session State
-            # --------------------------------------------------
-            st.session_state["drug_name"] = drug_name
-            st.session_state["smiles"] = smiles
-            st.session_state["formula"] = compound.molecular_formula
-            st.session_state["mw"] = compound.molecular_weight
-            st.session_state["cid"] = compound.cid
-            st.session_state["xlogp"] = compound.xlogp
-            st.session_state["tpsa"] = compound.tpsa
+        st.success("Drug Found Successfully")
 
-            # --------------------------------------------------
-            # Display Results
-            # --------------------------------------------------
+        c1, c2 = st.columns(2)
 
-            st.success("✅ Drug Found Successfully")
+        with c1:
 
-            st.header("📋 Basic Information")
+            st.metric("CID", cid)
+            st.metric("Formula", formula)
+            st.metric("Molecular Weight", mw)
 
-            col1, col2 = st.columns(2)
+        with c2:
 
-            with col1:
+            st.metric("XLogP", xlogp)
+            st.metric("TPSA", tpsa)
+            st.metric("SMILES Length", len(smiles))
 
-                st.metric(
-                    "PubChem CID",
-                    compound.cid
-                )
+        st.divider()
 
-                st.metric(
-                    "Molecular Formula",
-                    compound.molecular_formula
-                )
+        st.subheader("Canonical SMILES")
 
-                st.metric(
-                    "Molecular Weight",
-                    compound.molecular_weight
-                )
+        st.code(smiles)
 
-            with col2:
-
-                st.metric(
-                    "SMILES",
-                    smiles if smiles else "Not Available"
-                )
-
-                st.metric(
-                    "XLogP",
-                    compound.xlogp if compound.xlogp is not None else "N/A"
-                )
-
-                st.metric(
-                    "TPSA",
-                    compound.tpsa if compound.tpsa is not None else "N/A"
-                )
-
-            st.divider()
-
-            st.subheader("🧬 Canonical SMILES")
-
-            if smiles:
-
-                st.code(smiles)
-
-                st.success("✅ SMILES saved successfully for other pages.")
-
-            else:
-
-                st.error("❌ PubChem did not return a SMILES string for this compound.")
-
-            st.info("""
-The SMILES string has been saved automatically.
-
-You can now directly open:
-
-• Molecule Visualizer
-• Prediction
-
-without copying anything.
-""")
+        st.success("SMILES automatically saved for Molecule Visualizer and Prediction.")
 
     except Exception as e:
 
-        st.error(f"❌ Error: {e}")
+        st.error(str(e))
