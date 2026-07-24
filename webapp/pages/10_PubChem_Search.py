@@ -1,18 +1,18 @@
 import streamlit as st
 import pubchempy as pcp
 
-# -----------------------------
+# --------------------------------------------------
 # Page Configuration
-# -----------------------------
+# --------------------------------------------------
 st.set_page_config(
     page_title="PubChem Drug Search",
     page_icon="🌐",
     layout="wide"
 )
 
-# -----------------------------
+# --------------------------------------------------
 # Title
-# -----------------------------
+# --------------------------------------------------
 st.title("🌐 PubChem Drug Search")
 
 st.write("""
@@ -26,43 +26,60 @@ Examples:
 - Metformin
 """)
 
-# -----------------------------
+# --------------------------------------------------
 # Drug Input
-# -----------------------------
+# --------------------------------------------------
 drug_name = st.text_input(
     "Enter Drug Name",
-    "Aspirin"
+    value="Aspirin"
 )
 
-# -----------------------------
+# --------------------------------------------------
 # Search Button
-# -----------------------------
+# --------------------------------------------------
 if st.button("🔍 Search Drug"):
 
     try:
 
         compounds = pcp.get_compounds(drug_name, "name")
 
-        if len(compounds) == 0:
+        if not compounds:
             st.error("❌ Drug not found.")
 
         else:
 
             compound = compounds[0]
 
-            # ====================================================
-            # Save values so other pages can use them automatically
-            # ====================================================
+            # --------------------------------------------------
+            # Get SMILES safely
+            # --------------------------------------------------
+            smiles = None
 
+            try:
+                smiles = compound.canonical_smiles
+            except:
+                pass
+
+            if not smiles:
+                try:
+                    smiles = compound.isomeric_smiles
+                except:
+                    pass
+
+            # --------------------------------------------------
+            # Save into Session State
+            # --------------------------------------------------
             st.session_state["drug_name"] = drug_name
-            st.session_state["smiles"] = compound.canonical_smiles
+            st.session_state["smiles"] = smiles
             st.session_state["formula"] = compound.molecular_formula
             st.session_state["mw"] = compound.molecular_weight
             st.session_state["cid"] = compound.cid
             st.session_state["xlogp"] = compound.xlogp
             st.session_state["tpsa"] = compound.tpsa
 
-            # ====================================================
+            # --------------------------------------------------
+            # Display Results
+            # --------------------------------------------------
 
             st.success("✅ Drug Found Successfully")
 
@@ -90,30 +107,43 @@ if st.button("🔍 Search Drug"):
             with col2:
 
                 st.metric(
-                    "Canonical SMILES",
-                    compound.canonical_smiles
+                    "SMILES",
+                    smiles if smiles else "Not Available"
                 )
 
                 st.metric(
                     "XLogP",
-                    compound.xlogp if compound.xlogp else "N/A"
+                    compound.xlogp if compound.xlogp is not None else "N/A"
                 )
 
                 st.metric(
                     "TPSA",
-                    compound.tpsa if compound.tpsa else "N/A"
+                    compound.tpsa if compound.tpsa is not None else "N/A"
                 )
 
             st.divider()
 
             st.subheader("🧬 Canonical SMILES")
 
-            st.code(compound.canonical_smiles)
+            if smiles:
+
+                st.code(smiles)
+
+                st.success("✅ SMILES saved successfully for other pages.")
+
+            else:
+
+                st.error("❌ PubChem did not return a SMILES string for this compound.")
 
             st.info("""
-Copy this SMILES into the Molecule Visualizer.
+The SMILES string has been saved automatically.
 
-In the next step, we'll make this happen automatically.
+You can now directly open:
+
+• Molecule Visualizer
+• Prediction
+
+without copying anything.
 """)
 
     except Exception as e:
